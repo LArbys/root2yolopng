@@ -8,11 +8,13 @@
 #include "TStyle.h"
 #include "TColor.h"
 
+#include "pngwriter.h"
+
 const int NPLANES = 3;
 const float BASELINE = 400;
 const float ADC_MIP = 20.0;
-const float min_adc = -10;
-const float max_adc = 190;
+const float ADC_MIN = -10;
+const float ADC_MAX = 190;
 
 void parse_inputlist( std::string filename, std::vector< std::string >& inputlist ) {
 
@@ -31,6 +33,32 @@ void parse_inputlist( std::string filename, std::vector< std::string >& inputlis
   
 }
 
+void getRGB( float value, float& r, float& g, float& b ) {
+  // out of range
+  if ( value<ADC_MIN ) {
+    r = 0; g = 0; b = 1.0;
+    return;
+  }
+  if ( value>ADC_MAX ) {
+    r = 1.0; g = 0; b = 0;
+  }
+
+  // 0 to 1.0 MIPs: blue to green
+  if ( value < ADC_MIP ) {
+    float colorlen = ADC_MIP - ADC_MIN;
+    b = (value-ADC_MIN)/colorlen;
+    g = (1 - (value-ADC_MIN)/colorlen);
+    r = 0;
+  }
+  // 1.0 to 2.0 MIPs green to red
+  else if ( value>=ADC_MIP ) {
+    float colorlen = ADC_MAX - ADC_MIP;
+    b = 0;
+    g = (value-ADC_MIP)/colorlen;
+    r = (1.0 - (value-ADC_MIP)/colorlen);
+  }
+}
+
 void rescale_image( const std::vector<int>& img_v, std::vector<float>& out ) {
   
 }
@@ -38,7 +66,7 @@ void rescale_image( const std::vector<int>& img_v, std::vector<float>& out ) {
 int main( int narg, char** argv ) {
 
   std::string infile = argv[1];
-  std::string outdb = argv[2];
+  std::string outdir = argv[2];
 
   std::vector<std::string> inputlist;
   parse_inputlist( infile, inputlist );
@@ -105,18 +133,26 @@ int main( int narg, char** argv ) {
   while ( bytes!=0 ) {
     std::cout << "Entry " << entry << ": " << label << std::endl;
 
+    pngwriter img( height, width, 0.0, "test.png" );
+    
     // color gradient
     for (int h=0; h<height; h++) {
       for (int w=0; w<width; w++) {
 	float val = (float)pImgPlane2->at( w*height + h );
 	// set scale
-	
+	float r,g,b;
+	getRGB( val, r, g, b );
+	img.plot( h, w, r, g, b );
+	// 	float h,s,v;
+// 	TColor::RGB2HSV( r, g, b, h, s, v );
       }
     }
 
+    img.write_png();
+
     entry++;
     bytes = bbtree->GetEntry(entry);
-    if ( entry>100 )
+    if ( entry>0 )
       break;
   }
 
