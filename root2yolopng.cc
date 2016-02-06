@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <string>
 
@@ -19,6 +20,7 @@ const float BASELINE = 400;
 const float ADC_MIP = 20.0;
 const float ADC_MIN = -10;
 const float ADC_MAX = 190;
+bool write_images = false;
 
 void parse_inputlist( std::string filename, std::vector< std::string >& inputlist ) {
 
@@ -63,18 +65,17 @@ void getRGB( float value, float& r, float& g, float& b ) {
   }
 }
 
-void rescale_image( const std::vector<int>& img_v, std::vector<float>& out ) {
-  
-}
-
 int main( int narg, char** argv ) {
 
   std::string infile = argv[1];
   std::string outdir = argv[2];
+  std::string outfilelist = argv[3];
 
   std::vector<std::string> inputlist;
   parse_inputlist( infile, inputlist );
 
+
+  std::ofstream annotation( outfilelist.c_str(), 'w' );
 
   // For each event we do a few things: 
   // (1) Calculate mean of all images
@@ -97,11 +98,15 @@ int main( int narg, char** argv ) {
   
   // [ Branches ]
   // bounding box tree
+  int run, subrun, event;
   char label[100];
   // need to add height,width
   std::vector< int >* pImgPlane0 = 0;
   std::vector< int >* pImgPlane1 = 0;
   std::vector< int >* pImgPlane2 = 0;
+  bbtree->SetBranchAddress("run", &run );
+  bbtree->SetBranchAddress("subrun", &subrun );
+  bbtree->SetBranchAddress("event", &event );
   bbtree->SetBranchAddress("label",label);
   bbtree->SetBranchAddress("img_plane0", &pImgPlane0 );
   bbtree->SetBranchAddress("img_plane1", &pImgPlane1 );
@@ -136,6 +141,9 @@ int main( int narg, char** argv ) {
 
   while ( bytes!=0 ) {
     std::cout << "Entry " << entry << ": " << label << std::endl;
+    std::stringstream fname;
+    fname << outdir << "/" << label << "_" << run << "_" << subrun << "_" << event << ".JPEG";
+    std::cout << " fname: " << fname.str() << std::endl;
 
     //pngwriter img( height, width, 0.0, "test.png" );
     cv::Mat img( height, width, CV_8UC3 );
@@ -153,19 +161,19 @@ int main( int narg, char** argv ) {
 	img.at<cv::Vec3b>(cv::Point(h,w))[0] = b*255;
 	img.at<cv::Vec3b>(cv::Point(h,w))[1] = g*255;
 	img.at<cv::Vec3b>(cv::Point(h,w))[2] = r*255;
-	cv::imwrite( "test.jpeg", img );
 	//img.plot( h, w, r, g, b );
 	// 	float h,s,v;
 // 	TColor::RGB2HSV( r, g, b, h, s, v );
       }
     }
-
+    if ( write_images )
+      cv::imwrite( fname.str(), img );
     //img.write_png();
 
     entry++;
     bytes = bbtree->GetEntry(entry);
-    if ( entry>0 )
-      break;
+    //#if ( entry>0 )
+    //#  break;
   }
 
 
