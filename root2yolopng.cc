@@ -8,7 +8,11 @@
 #include "TStyle.h"
 #include "TColor.h"
 
-#include "pngwriter.h"
+//#include "pngwriter.h"
+
+// OpenCV
+#include "opencv/cv.h"
+#include "opencv2/opencv.hpp"
 
 const int NPLANES = 3;
 const float BASELINE = 400;
@@ -46,8 +50,8 @@ void getRGB( float value, float& r, float& g, float& b ) {
   // 0 to 1.0 MIPs: blue to green
   if ( value < ADC_MIP ) {
     float colorlen = ADC_MIP - ADC_MIN;
-    b = (value-ADC_MIN)/colorlen;
-    g = (1 - (value-ADC_MIN)/colorlen);
+    g = (value-ADC_MIN)/colorlen;
+    b = (1 - (value-ADC_MIN)/colorlen);
     r = 0;
   }
   // 1.0 to 2.0 MIPs green to red
@@ -133,22 +137,30 @@ int main( int narg, char** argv ) {
   while ( bytes!=0 ) {
     std::cout << "Entry " << entry << ": " << label << std::endl;
 
-    pngwriter img( height, width, 0.0, "test.png" );
+    //pngwriter img( height, width, 0.0, "test.png" );
+    cv::Mat img( height, width, CV_8UC3 );
     
     // color gradient
     for (int h=0; h<height; h++) {
       for (int w=0; w<width; w++) {
-	float val = (float)pImgPlane2->at( w*height + h );
+	float val = (float)(pImgPlane2->at( w*height + h )-BASELINE);
 	// set scale
 	float r,g,b;
 	getRGB( val, r, g, b );
-	img.plot( h, w, r, g, b );
+
+	// get pixel
+	cv::Vec3b color = img.at<cv::Vec3b>(cv::Point(h,w));
+	img.at<cv::Vec3b>(cv::Point(h,w))[0] = b*255;
+	img.at<cv::Vec3b>(cv::Point(h,w))[1] = g*255;
+	img.at<cv::Vec3b>(cv::Point(h,w))[2] = r*255;
+	cv::imwrite( "test.jpeg", img );
+	//img.plot( h, w, r, g, b );
 	// 	float h,s,v;
 // 	TColor::RGB2HSV( r, g, b, h, s, v );
       }
     }
 
-    img.write_png();
+    //img.write_png();
 
     entry++;
     bytes = bbtree->GetEntry(entry);

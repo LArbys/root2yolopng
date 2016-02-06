@@ -5,15 +5,14 @@ LDLIBS =
 
 ROOTLIBS = `root-config --libs`
 
-PNGWRITER_LIBDIR = /Users/twongjirad/software/pngwriter/lib
-PNGWRITER_INCDIR = /Users/twongjirad/software/pngwriter/include
 PNGWRITER_LIBS   = -lpngwriter -lpng -lz -lm -lc -lfreetype
+OPENCV_LIBS = -lopencv_core
+OPENCV_LIBS = $(wildcard ${OPENCV_LIBDIR}/libopencv*.so)
 
-FREETYPE_INCDIR = /opt/X11/include/freetype2
-
-CFLAGS += -I$(PNGWRITER_INCDIR) -I$(FREETYPE_INCDIR)
+CFLAGS += -I$(PNGWRITER_INCDIR) -I$(OPENCV_INCDIR)
 LDLIBS += $(ROOTLIBS)
 LDLIBS += -L$(PNGWRITER_LIBDIR) $(PNGWRITER_LIBS)
+LDLIBS += -L$(OPENCV_LIBDIR) $(OPENCV_LIBS)
 
 all: root2yolopng
 
