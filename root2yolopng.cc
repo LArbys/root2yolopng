@@ -16,11 +16,12 @@
 #include "opencv2/opencv.hpp"
 
 const int NPLANES = 3;
-const float BASELINE = 400;
+const float BASELINE = 0;
 const float ADC_MIP = 20.0;
 const float ADC_MIN = -10;
 const float ADC_MAX = 190;
-bool write_images = false;
+bool write_images = true;
+bool use_whole_image = false;
 
 void parse_inputlist( std::string filename, std::vector< std::string >& inputlist ) {
 
@@ -75,7 +76,7 @@ int main( int narg, char** argv ) {
   parse_inputlist( infile, inputlist );
 
 
-  std::ofstream annotation( outfilelist.c_str(), 'w' );
+  std::ofstream outlist( outfilelist.c_str());
 
   // For each event we do a few things: 
   // (1) Calculate mean of all images
@@ -113,14 +114,39 @@ int main( int narg, char** argv ) {
   bbtree->SetBranchAddress("img_plane2", &pImgPlane2 );
 
   // entire image tree
-  //...
+  int img_run, img_subrun, img_event;
+  char img_label[50];
+  std::vector<int>* pimg_plane0 = 0;
+  std::vector<int>* pimg_plane1 = 0;
+  std::vector<int>* pimg_plane2 = 0;
+  imgtree->SetBranchAddress("run", &img_run );
+  imgtree->SetBranchAddress("subrun", &img_subrun );
+  imgtree->SetBranchAddress("event", &img_event );
+  imgtree->SetBranchAddress("label",img_label);
+  imgtree->SetBranchAddress("img_plane0", &pimg_plane0 );
+  imgtree->SetBranchAddress("img_plane1", &pimg_plane1 );
+  imgtree->SetBranchAddress("img_plane2", &pimg_plane2 );
 
+
+  TChain* ttree = NULL;
+  if ( use_whole_image )
+    ttree = imgtree;
+  else
+    ttree = bbtree;
   int entry = 0;
-  unsigned long bytes = bbtree->GetEntry(entry);
+  unsigned long bytes = ttree->GetEntry(entry);
 
   // Use first entry to determine image size
-  int height= sqrt(pImgPlane2->size());
-  int width = sqrt(pImgPlane2->size());
+  int height;
+  int width; 
+  if ( use_whole_image ) {
+    height = sqrt(pimg_plane2->size());
+    width  = sqrt(pimg_plane2->size());
+  }
+  else {
+    height = sqrt(pImgPlane2->size());
+    width = sqrt(pImgPlane2->size());
+  }
   std::cout << "IMAGE SIZE: " << width << " x " << height << std::endl;
 
   // Set the color scale
@@ -139,10 +165,22 @@ int main( int narg, char** argv ) {
   std::vector< float > img_rescale_plane2;
   img_rescale_plane2.resize(height*width);
 
+
   while ( bytes!=0 ) {
-    std::cout << "Entry " << entry << ": " << label << std::endl;
+    std::string strlabel;
+    if (use_whole_image) {
+      strlabel = img_label;
+      //strlabel = "pizero";
+      strlabel = strlabel.substr(strlabel.find_last_of("_")+1,std::string::npos);
+    }
+    else
+      strlabel = label;
+    std::cout << "Entry " << entry << ": " << strlabel << std::endl;
     std::stringstream fname;
-    fname << outdir << "/" << label << "_" << run << "_" << subrun << "_" << event << ".JPEG";
+    if ( use_whole_image )
+      fname << outdir << "/" << strlabel << "_" << img_run << "_" << img_subrun << "_" << img_event << ".JPEG";
+    else
+      fname << outdir << "/" << strlabel << "_" << run << "_" << subrun << "_" << event << ".JPEG";
     std::cout << " fname: " << fname.str() << std::endl;
 
     //pngwriter img( height, width, 0.0, "test.png" );
@@ -151,7 +189,12 @@ int main( int narg, char** argv ) {
     // color gradient
     for (int h=0; h<height; h++) {
       for (int w=0; w<width; w++) {
-	float val = (float)(pImgPlane2->at( w*height + h )-BASELINE);
+	float val = BASELINE;
+	if ( use_whole_image )
+	  val = (float)(pimg_plane2->at( w*height + h )-BASELINE);
+	else
+	  val = (float)(pImgPlane2->at( w*height + h )-BASELINE);
+
 	// set scale
 	float r,g,b;
 	getRGB( val, r, g, b );
@@ -161,17 +204,15 @@ int main( int narg, char** argv ) {
 	img.at<cv::Vec3b>(cv::Point(h,w))[0] = b*255;
 	img.at<cv::Vec3b>(cv::Point(h,w))[1] = g*255;
 	img.at<cv::Vec3b>(cv::Point(h,w))[2] = r*255;
-	//img.plot( h, w, r, g, b );
-	// 	float h,s,v;
-// 	TColor::RGB2HSV( r, g, b, h, s, v );
       }
     }
     if ( write_images )
       cv::imwrite( fname.str(), img );
+    outlist << fname.str() << std::endl;
     //img.write_png();
 
     entry++;
-    bytes = bbtree->GetEntry(entry);
+    bytes = ttree->GetEntry(entry);
     //#if ( entry>0 )
     //#  break;
   }

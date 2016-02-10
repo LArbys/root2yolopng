@@ -5,7 +5,7 @@ LDLIBS =
 
 ROOTLIBS = `root-config --libs`
 
-PNGWRITER_LIBS   = -lpngwriter -lpng -lz -lm -lc -lfreetype
+#PNGWRITER_LIBS   = -lpngwriter -lpng -lz -lm -lc -lfreetype
 OPENCV_LIBS = -lopencv_core
 OPENCV_LIBS = $(wildcard ${OPENCV_LIBDIR}/libopencv*.so)
 
@@ -21,7 +21,7 @@ root2yolopng.o: root2yolopng.cc
 
 root2yolopng: root2yolopng.o
 	$(CXX) $(LDLIBS) -o root2yolopng root2yolopng.o $(LDLIBS)
-	@rm root2yolopng.o
+#	@rm root2yolopng.o
 
 clean:
 	@rm root2yolopng
